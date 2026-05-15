@@ -6,3 +6,14 @@ validate:compose:
   image: docker:27-cli
   script:
     - docker compose -f docker-compose.yml config >/dev/null
+
+validate:terraform:
+  stage: validate
+  image:
+    name: hashicorp/terraform:1.8.5
+    entrypoint: [""]
+  script:
+    - cd infra
+    - terraform init -backend=false
+    - terraform fmt -check -recursive
+    - terraform validate

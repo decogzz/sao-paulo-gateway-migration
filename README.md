@@ -172,3 +172,40 @@ This script migrates São Paulo first, then Rio, then Brasília, with operator c
 - `DESIGN_DECISIONS.md`
 - `ROLLOUT_PLAN.md`
 
+
+
+---
+
+## 11) AWS Terraform starter layer (`infra/`)
+
+This repository now includes a cloud IaC starter under `infra/` for AWS (VPC, ALB weighted routing, ECS services, ECR, IAM/logging placeholders).
+
+### Validate locally (no AWS apply)
+
+```bash
+cd infra
+terraform init -backend=false
+terraform fmt -recursive
+terraform validate
+```
+
+### Plan/apply locally (requires AWS credentials configured)
+
+```bash
+cd infra
+cp terraform.tfvars.example terraform.tfvars
+# edit image URIs and values
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+### Also run the local Docker simulation
+
+```bash
+./scripts/bootstrap-secrets.sh
+docker compose up -d --build
+./scripts/health-check.sh
+```
+
+> If Docker is not available in your environment (e.g., WSL without Docker Desktop integration), run from a host with Docker enabled.
