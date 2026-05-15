@@ -209,3 +209,29 @@ docker compose up -d --build
 ```
 
 > If Docker is not available in your environment (e.g., WSL without Docker Desktop integration), run from a host with Docker enabled.
+
+
+---
+
+## 12) Blue-Green drill automation
+
+Run a full switch-to-green (phase 4), traffic test, and rollback drill automatically:
+
+```bash
+# all regions: switch to v2, test 60s, rollback to original phase automatically
+./scripts/blue-green-drill.sh all 60 10 auto 40
+
+# single region example
+./scripts/blue-green-drill.sh saopaulo 45 12 auto 30
+
+# force rollback to phase 1 after drill
+./scripts/blue-green-drill.sh all 60 10 1 40
+```
+
+Arguments:
+
+1. target: `all|saopaulo|rio|brasilia`
+2. test duration seconds (default `60`)
+3. concurrency passed to traffic generator (default `10`)
+4. rollback phase: `auto|1|2|3|4` (default `auto`)
+5. samples per region to estimate version distribution (default `40`)
