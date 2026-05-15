@@ -40,6 +40,12 @@ variable "simulated_regions" {
   default     = ["saopaulo", "rio", "brasilia"]
 }
 
+variable "gateway_service_account_name" {
+  description = "Kubernetes service account name used by gateway workloads/secret stores for IRSA"
+  type        = string
+  default     = "gateway-workload"
+}
+
 variable "node_instance_types" {
   description = "EKS node group EC2 instance types"
   type        = list(string)

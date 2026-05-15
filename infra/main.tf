@@ -17,6 +17,11 @@ locals {
     Environment = var.environment
     ManagedBy   = "terraform"
   }
+
+  irsa_subjects = [
+    for region in var.simulated_regions :
+    "system:serviceaccount:gateway-${region}:${var.gateway_service_account_name}"
+  ]
 }
 
 resource "aws_vpc" "this" {
@@ -211,6 +216,81 @@ resource "aws_eks_cluster" "this" {
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-cluster"
   })
+}
+
+data "tls_certificate" "eks_oidc" {
+  url = aws_eks_cluster.this.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_openid_connect_provider" "eks" {
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.eks_oidc.certificates[0].sha1_fingerprint]
+  url             = aws_eks_cluster.this.identity[0].oidc[0].issuer
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-eks-oidc-provider"
+  })
+}
+
+data "aws_iam_policy_document" "gateway_irsa_assume_role" {
+  statement {
+    sid     = "AllowAssumeRoleWithWebIdentity"
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"
+      values   = local.irsa_subjects
+    }
+  }
+}
+
+resource "aws_iam_role" "gateway_irsa" {
+  name               = "${local.name_prefix}-gateway-irsa-role"
+  assume_role_policy = data.aws_iam_policy_document.gateway_irsa_assume_role.json
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-gateway-irsa-role"
+  })
+}
+
+data "aws_iam_policy_document" "gateway_secrets_access" {
+  statement {
+    sid    = "ReadProcessorCredentialsByRegion"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetSecretValue"
+    ]
+    resources = [for secret in aws_secretsmanager_secret.processor_credentials : secret.arn]
+  }
+}
+
+resource "aws_iam_policy" "gateway_secrets_access" {
+  name        = "${local.name_prefix}-gateway-secrets-access"
+  description = "Least-privilege access for gateway service accounts to read regional processor credentials"
+  policy      = data.aws_iam_policy_document.gateway_secrets_access.json
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-gateway-secrets-access"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "gateway_irsa_secrets_access" {
+  role       = aws_iam_role.gateway_irsa.name
+  policy_arn = aws_iam_policy.gateway_secrets_access.arn
 }
 
 resource "aws_eks_node_group" "main" {

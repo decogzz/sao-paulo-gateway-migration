@@ -7,12 +7,13 @@ This folder provides a **starter AWS IaC scaffold for EKS** (instead of ECS), al
 - VPC + internet gateway + public subnets
 - EKS cluster + managed node group
 - IAM roles/policies for EKS control plane and worker nodes
+- IRSA role + least-privilege Secrets Manager read policy for gateway workloads
 - ECR repositories for `gateway-v1` and `gateway-v2`
 - Secrets Manager placeholders per logical region (`saopaulo`, `rio`, `brasilia`)
 - CloudWatch log group for control-plane logs
 - Kubernetes manifest starter under `infra/k8s/`
 
-> Note: This is a **starter layer** for assessment purposes. It is intentionally not production-complete (no private subnets + NAT, no IRSA wiring for controllers, no WAF, no autoscaling policies tuning).
+> Note: This is a **starter layer** for assessment purposes. It is intentionally not production-complete (no private subnets + NAT, no WAF, no autoscaling policies tuning).
 
 ## Local commands
 
@@ -48,9 +49,19 @@ kubectl get nodes
 
 ```bash
 kubectl apply -f infra/k8s/namespaces.yaml
+kubectl apply -f infra/k8s/irsa-serviceaccounts.yaml
+kubectl apply -f infra/k8s/external-secrets.yaml
 kubectl apply -f infra/k8s/saopaulo.yaml
 kubectl apply -f infra/k8s/rio.yaml
 kubectl apply -f infra/k8s/brasilia.yaml
+```
+
+### Wire IRSA role ARN into service accounts
+
+After Terraform apply, replace placeholder role ARN in `infra/k8s/irsa-serviceaccounts.yaml` with:
+
+```bash
+terraform output -raw gateway_irsa_role_arn
 ```
 
 ### Switch canary phase in-cluster (example)

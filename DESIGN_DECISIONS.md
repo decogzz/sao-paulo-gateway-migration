@@ -69,3 +69,58 @@ This gives low operational complexity while still supporting smooth, reversible 
 - The Terraform starter layer was updated from ECS to **EKS** to align with the Kubernetes trade-off discussion.
 - EKS allows future extension with ingress canary annotations/service mesh and stronger parity with production Kubernetes patterns.
 - `infra/k8s/` includes starter manifests and a `set-phase.sh` helper for phase-based canary weight switching.
+
+## 8) Why NGINX ingress canary annotations (vs service mesh)
+
+- For this exercise, NGINX Ingress canary annotations (`nginx.ingress.kubernetes.io/canary-weight`) provide a direct and understandable weight control mechanism with low setup cost.
+- Compared to Istio/Linkerd, NGINX has fewer moving parts for a reviewer to run quickly while still demonstrating weighted progressive delivery.
+- Trade-off accepted: service mesh would provide richer traffic policies (header-based routing, per-route retries/timeouts, mTLS policy uniformity), but introduces significantly more operational surface area for a short assessment.
+
+## 9) Secrets design and least-privilege model
+
+- Runtime plaintext credentials are treated as local simulation only and are generated on-demand (`bootstrap-secrets.sh`) with restrictive file permissions (`umask 077`).
+- Cloud path uses AWS Secrets Manager as source of truth plus External Secrets Operator for synchronized K8s Secret materialization.
+- IRSA is used so workload pods assume a dedicated IAM role bound to a specific service account identity per namespace.
+- IAM policy scope is restricted to:
+  - `secretsmanager:DescribeSecret`
+  - `secretsmanager:GetSecretValue`
+  - and only the three regional processor credential secret ARNs created by Terraform.
+
+## 10) In-flight transaction behavior during rollback
+
+- Rollback changes only **routing weights**, not pod identities or active connections.
+- Requests already proxied to v2 continue to completion; new traffic follows the updated lower v2 weight immediately.
+- This avoids forced connection termination and reduces operator-induced error spikes during rollback events.
+- In production, this should be paired with:
+  - idempotency keys for payment authorization requests
+  - bounded retry budgets
+  - explicit timeout and circuit-breaker policy per processor dependency.
+
+## 11) Capacity planning and scaling assumptions
+
+- Current manifests define explicit CPU/memory requests and limits to avoid noisy-neighbor behavior and make scheduling intent visible.
+- Node sizing defaults (3 x `t3.medium`) are sufficient for exercise load; production should derive required node count from p95 latency targets and expected QPS by region.
+- Recommended production controls not fully implemented here:
+  - HPA on request rate/CPU + custom latency/error signals
+  - cluster autoscaler with controlled scale-up/down windows
+  - separate node groups or taints for critical gateway workloads.
+
+## 12) Data consistency and migration safety
+
+- Gateway services are intentionally stateless request processors; rollout does not require state migration between v1 and v2.
+- Consistency risk shifts to downstream payment processor interactions. To protect correctness:
+  - keep request schema backward-compatible through full migration window
+  - record version label on all auth outcomes and errors for post-incident correlation
+  - preserve deterministic rollback path (phase rollback to 1/2) so behavior can be restored quickly.
+
+## 13) Additional failure modes considered
+
+- **Phase transition misconfiguration** (wrong canary weight or namespace): mitigated by explicit phase script mapping and namespace scoping.
+- **Secret sync lag** (Secrets Manager update not yet reflected): mitigated by periodic refresh interval and readiness probes that fail fast when credentials are unavailable.
+- **Regional partial degradation**: operators can halt one region while continuing stable regions due to per-region isolation and independent phase control.
+
+## 14) Regional sequencing rationale
+
+- Preferred sequence: **São Paulo → Rio → Brasília**.
+- São Paulo typically represents the largest traffic share, so validating there first provides highest confidence signal before expanding blast radius.
+- If São Paulo is unstable, rollback occurs before broadening impact to lower-volume regions.

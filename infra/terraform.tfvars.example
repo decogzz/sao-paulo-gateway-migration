@@ -3,6 +3,7 @@ environment         = "dev"
 aws_region          = "sa-east-1"
 kubernetes_version  = "1.30"
 endpoint_public_access = true
+gateway_service_account_name = "gateway-workload"
 
 node_instance_types = ["t3.medium"]
 node_desired_size   = 3

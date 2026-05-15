@@ -2,6 +2,7 @@ node_modules/
 *.log
 .env
 secrets/runtime/*
+secrets/runtime/**/*.env
 !secrets/runtime/.gitkeep
 
 .terraform/
