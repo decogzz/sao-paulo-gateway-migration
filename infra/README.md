@@ -1,22 +1,18 @@
-# AWS Terraform Starter Layer (`infra/`)
+# AWS Terraform Starter Layer (`infra/`) - EKS Edition
 
-This folder provides a **starter AWS IaC scaffold** for running the migration in cloud-native components.
+This folder provides a **starter AWS IaC scaffold for EKS** (instead of ECS), aligned with the Kubernetes trade-off discussed in design decisions.
 
 ## What it includes
 
-- VPC + public subnets + internet gateway
-- Application Load Balancer
-- Weighted forwarding by logical region (`X-Region` header) to model rollout phases
-- ECS Fargate cluster and services for:
-  - `saopaulo-v1`, `saopaulo-v2`
-  - `rio-v1`, `rio-v2`
-  - `brasilia-v1`, `brasilia-v2`
-- ECR repositories for v1 and v2 images
-- CloudWatch log groups
-- IAM execution role scaffold
-- SSM/Secrets injection placeholder in task definitions
+- VPC + internet gateway + public subnets
+- EKS cluster + managed node group
+- IAM roles/policies for EKS control plane and worker nodes
+- ECR repositories for `gateway-v1` and `gateway-v2`
+- Secrets Manager placeholders per logical region (`saopaulo`, `rio`, `brasilia`)
+- CloudWatch log group for control-plane logs
+- Kubernetes manifest starter under `infra/k8s/`
 
-> Note: This is a **starter layer** for assessment purposes. It is intentionally not production-complete (no NAT/private subnet pattern, no WAF, no full secret policy wiring).
+> Note: This is a **starter layer** for assessment purposes. It is intentionally not production-complete (no private subnets + NAT, no IRSA wiring for controllers, no WAF, no autoscaling policies tuning).
 
 ## Local commands
 
@@ -34,25 +30,33 @@ terraform validate
 ```bash
 cd infra
 cp terraform.tfvars.example terraform.tfvars
-# edit terraform.tfvars with real values
+# edit terraform.tfvars with your account/region values
 
 terraform init
 terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
-### Change rollout traffic weights
-
-Edit `v2_weights` in `terraform.tfvars`, then:
+### Configure kubectl for the created cluster
 
 ```bash
-terraform plan -out=tfplan
-terraform apply tfplan
+aws eks update-kubeconfig --region sa-east-1 --name sao-paulo-gateway-migration-dev-cluster
+kubectl get nodes
 ```
 
-Example:
+### Deploy Kubernetes starter manifests
 
-- phase 1: `{saopaulo=10, rio=10, brasilia=10}`
-- phase 2: `{saopaulo=50, rio=50, brasilia=50}`
-- phase 3: `{saopaulo=90, rio=90, brasilia=90}`
-- phase 4: `{saopaulo=100, rio=100, brasilia=100}`
+```bash
+kubectl apply -f infra/k8s/namespaces.yaml
+kubectl apply -f infra/k8s/saopaulo.yaml
+kubectl apply -f infra/k8s/rio.yaml
+kubectl apply -f infra/k8s/brasilia.yaml
+```
+
+### Switch canary phase in-cluster (example)
+
+```bash
+# phase mapping: 1=10, 2=50, 3=90, 4=100
+./infra/k8s/set-phase.sh saopaulo 2
+./infra/k8s/set-phase.sh rio 3
+```

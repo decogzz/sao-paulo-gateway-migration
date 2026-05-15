@@ -1,11 +1,22 @@
-output "alb_dns_name" {
-  description = "DNS name of the migration ALB"
-  value       = aws_lb.gateway.dns_name
+output "eks_cluster_name" {
+  description = "EKS cluster name"
+  value       = aws_eks_cluster.this.name
 }
 
-output "ecs_cluster_name" {
-  description = "ECS cluster name"
-  value       = aws_ecs_cluster.this.name
+output "eks_cluster_endpoint" {
+  description = "EKS API endpoint"
+  value       = aws_eks_cluster.this.endpoint
+}
+
+output "eks_cluster_ca_data" {
+  description = "EKS cluster CA certificate data"
+  value       = aws_eks_cluster.this.certificate_authority[0].data
+  sensitive   = true
+}
+
+output "eks_node_group_name" {
+  description = "Primary managed node group name"
+  value       = aws_eks_node_group.main.node_group_name
 }
 
 output "ecr_repository_urls" {
@@ -13,10 +24,12 @@ output "ecr_repository_urls" {
   value       = { for k, v in aws_ecr_repository.gateway : k => v.repository_url }
 }
 
-output "target_groups" {
-  description = "Target groups by logical region/version"
-  value = {
-    for k, v in aws_lb_target_group.gateway :
-    k => v.arn
-  }
+output "processor_secret_arns" {
+  description = "Secrets Manager ARNs by logical region"
+  value       = { for k, v in aws_secretsmanager_secret.processor_credentials : k => v.arn }
+}
+
+output "kubeconfig_command" {
+  description = "Command to configure kubectl"
+  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${aws_eks_cluster.this.name}"
 }

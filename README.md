@@ -178,7 +178,7 @@ This script migrates São Paulo first, then Rio, then Brasília, with operator c
 
 ## 11) AWS Terraform starter layer (`infra/`)
 
-This repository now includes a cloud IaC starter under `infra/` for AWS (VPC, ALB weighted routing, ECS services, ECR, IAM/logging placeholders).
+This repository now includes a cloud IaC starter under `infra/` for AWS EKS (VPC, EKS cluster/node groups, ECR, IAM, Secrets Manager placeholders, and Kubernetes manifests).
 
 ### Validate locally (no AWS apply)
 
@@ -194,7 +194,7 @@ terraform validate
 ```bash
 cd infra
 cp terraform.tfvars.example terraform.tfvars
-# edit image URIs and values
+# edit account/region/image values
 terraform init
 terraform plan -out=tfplan
 terraform apply tfplan

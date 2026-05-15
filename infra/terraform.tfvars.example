@@ -1,18 +1,24 @@
-project_name = "sao-paulo-gateway-migration"
-environment  = "dev"
-aws_region   = "sa-east-1"
+project_name        = "sao-paulo-gateway-migration"
+environment         = "dev"
+aws_region          = "sa-east-1"
+kubernetes_version  = "1.30"
+endpoint_public_access = true
 
-# Replace with actual built/pushed ECR image URIs for each version.
+node_instance_types = ["t3.medium"]
+node_desired_size   = 3
+node_min_size       = 3
+node_max_size       = 6
+
+# Image URI hints for Kubernetes manifests
+# (Terraform itself creates repos and outputs final repository URLs)
 gateway_images = {
   v1 = "123456789012.dkr.ecr.sa-east-1.amazonaws.com/sao-paulo-gateway-migration-v1:latest"
   v2 = "123456789012.dkr.ecr.sa-east-1.amazonaws.com/sao-paulo-gateway-migration-v2:latest"
 }
 
-# Rollout percentages per logical region
+# Rollout hints by logical region (consumed in rollout docs/scripts)
 v2_weights = {
   saopaulo = 10
   rio      = 10
   brasilia = 10
 }
-
-desired_count_per_service = 1

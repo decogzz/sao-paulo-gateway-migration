@@ -16,6 +16,12 @@ variable "aws_region" {
   default     = "sa-east-1"
 }
 
+variable "kubernetes_version" {
+  description = "EKS Kubernetes version"
+  type        = string
+  default     = "1.30"
+}
+
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string
@@ -23,46 +29,58 @@ variable "vpc_cidr" {
 }
 
 variable "public_subnet_cidrs" {
-  description = "Public subnet CIDRs (2-3 entries recommended)"
+  description = "Public subnet CIDRs for EKS control plane and node groups"
   type        = list(string)
   default     = ["10.50.1.0/24", "10.50.2.0/24", "10.50.3.0/24"]
 }
 
 variable "simulated_regions" {
-  description = "Logical regions for rollout simulation"
+  description = "Logical regions for rollout simulation inside EKS namespaces"
   type        = list(string)
   default     = ["saopaulo", "rio", "brasilia"]
 }
 
+variable "node_instance_types" {
+  description = "EKS node group EC2 instance types"
+  type        = list(string)
+  default     = ["t3.medium"]
+}
+
+variable "node_desired_size" {
+  description = "Desired worker nodes"
+  type        = number
+  default     = 3
+}
+
+variable "node_min_size" {
+  description = "Minimum worker nodes"
+  type        = number
+  default     = 3
+}
+
+variable "node_max_size" {
+  description = "Maximum worker nodes"
+  type        = number
+  default     = 6
+}
+
+variable "endpoint_public_access" {
+  description = "Expose EKS API endpoint publicly"
+  type        = bool
+  default     = true
+}
+
 variable "gateway_images" {
-  description = "Container image URI for each gateway version"
+  description = "Container image URI hints by version (used by Kubernetes manifests/docs)"
   type        = map(string)
   default = {
-    v1 = "public.ecr.aws/docker/library/node:20-alpine"
-    v2 = "public.ecr.aws/docker/library/node:20-alpine"
+    v1 = "123456789012.dkr.ecr.sa-east-1.amazonaws.com/sao-paulo-gateway-migration-v1:latest"
+    v2 = "123456789012.dkr.ecr.sa-east-1.amazonaws.com/sao-paulo-gateway-migration-v2:latest"
   }
 }
 
-variable "desired_count_per_service" {
-  description = "Desired tasks per region/version service"
-  type        = number
-  default     = 1
-}
-
-variable "cpu" {
-  description = "Fargate task CPU"
-  type        = number
-  default     = 256
-}
-
-variable "memory" {
-  description = "Fargate task memory"
-  type        = number
-  default     = 512
-}
-
 variable "v2_weights" {
-  description = "Traffic percentage to v2 by logical region (0-100)"
+  description = "Canary percentage hints by logical region (used by rollout docs/scripts)"
   type        = map(number)
   default = {
     saopaulo = 10

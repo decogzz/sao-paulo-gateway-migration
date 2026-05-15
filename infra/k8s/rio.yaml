@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-v1
+  namespace: gateway-rio
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: gateway, version: v1 }
+  template:
+    metadata:
+      labels: { app: gateway, version: v1 }
+    spec:
+      containers:
+        - name: gateway
+          image: 123456789012.dkr.ecr.sa-east-1.amazonaws.com/sao-paulo-gateway-migration-v1:latest
+          ports: [{ containerPort: 3000 }]
+          env:
+            - { name: REGION, value: "rio" }
+            - { name: GATEWAY_VERSION, value: "v1" }
+          envFrom:
+            - secretRef: { name: processor-credentials }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-v2
+  namespace: gateway-rio
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: gateway, version: v2 }
+  template:
+    metadata:
+      labels: { app: gateway, version: v2 }
+    spec:
+      containers:
+        - name: gateway
+          image: 123456789012.dkr.ecr.sa-east-1.amazonaws.com/sao-paulo-gateway-migration-v2:latest
+          ports: [{ containerPort: 3000 }]
+          env:
+            - { name: REGION, value: "rio" }
+            - { name: GATEWAY_VERSION, value: "v2" }
+          envFrom:
+            - secretRef: { name: processor-credentials }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-v1
+  namespace: gateway-rio
+spec:
+  selector: { app: gateway, version: v1 }
+  ports: [{ port: 80, targetPort: 3000 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-v2
+  namespace: gateway-rio
+spec:
+  selector: { app: gateway, version: v2 }
+  ports: [{ port: 80, targetPort: 3000 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway-primary
+  namespace: gateway-rio
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: rio.gateway.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-v1
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway-canary
+  namespace: gateway-rio
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: rio.gateway.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-v2
+                port:
+                  number: 80

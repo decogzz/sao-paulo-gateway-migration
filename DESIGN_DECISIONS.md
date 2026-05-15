@@ -62,3 +62,10 @@ This gives low operational complexity while still supporting smooth, reversible 
 - **"Health checks"**: app-level endpoints + compose health checks + Nginx failover config
 - **"Secrets management"**: mounted secret files generated at runtime, watched by services
 
+
+## 7) Cloud IaC alignment update (EKS)
+
+- The local runnable stack remains Docker Compose + Nginx for fast assessment execution.
+- The Terraform starter layer was updated from ECS to **EKS** to align with the Kubernetes trade-off discussion.
+- EKS allows future extension with ingress canary annotations/service mesh and stronger parity with production Kubernetes patterns.
+- `infra/k8s/` includes starter manifests and a `set-phase.sh` helper for phase-based canary weight switching.
