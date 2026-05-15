@@ -1,0 +1,209 @@
+name: sao-paulo-gateway-migration
+
+services:
+  gateway-v1-saopaulo:
+    build: ./gateway-v1
+    container_name: gateway-v1-saopaulo
+    environment:
+      PORT: 3000
+      REGION: saopaulo
+      GATEWAY_VERSION: v1
+      CREDENTIALS_FILE: /run/secrets/processor_credentials.env
+      APPROVAL_CHANCE: 0.90
+      ERROR_CHANCE: 0.018
+    volumes:
+      - ./secrets/runtime/saopaulo/v1/processor.env:/run/secrets/processor_credentials.env:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  gateway-v2-saopaulo:
+    build: ./gateway-v2
+    container_name: gateway-v2-saopaulo
+    environment:
+      PORT: 3000
+      REGION: saopaulo
+      GATEWAY_VERSION: v2
+      CREDENTIALS_FILE: /run/secrets/processor_credentials.env
+      APPROVAL_CHANCE: 0.94
+      ERROR_CHANCE: 0.008
+    volumes:
+      - ./secrets/runtime/saopaulo/v2/processor.env:/run/secrets/processor_credentials.env:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  gateway-v1-rio:
+    build: ./gateway-v1
+    container_name: gateway-v1-rio
+    environment:
+      PORT: 3000
+      REGION: rio
+      GATEWAY_VERSION: v1
+      CREDENTIALS_FILE: /run/secrets/processor_credentials.env
+      APPROVAL_CHANCE: 0.90
+      ERROR_CHANCE: 0.018
+    volumes:
+      - ./secrets/runtime/rio/v1/processor.env:/run/secrets/processor_credentials.env:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  gateway-v2-rio:
+    build: ./gateway-v2
+    container_name: gateway-v2-rio
+    environment:
+      PORT: 3000
+      REGION: rio
+      GATEWAY_VERSION: v2
+      CREDENTIALS_FILE: /run/secrets/processor_credentials.env
+      APPROVAL_CHANCE: 0.94
+      ERROR_CHANCE: 0.008
+    volumes:
+      - ./secrets/runtime/rio/v2/processor.env:/run/secrets/processor_credentials.env:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  gateway-v1-brasilia:
+    build: ./gateway-v1
+    container_name: gateway-v1-brasilia
+    environment:
+      PORT: 3000
+      REGION: brasilia
+      GATEWAY_VERSION: v1
+      CREDENTIALS_FILE: /run/secrets/processor_credentials.env
+      APPROVAL_CHANCE: 0.90
+      ERROR_CHANCE: 0.018
+    volumes:
+      - ./secrets/runtime/brasilia/v1/processor.env:/run/secrets/processor_credentials.env:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  gateway-v2-brasilia:
+    build: ./gateway-v2
+    container_name: gateway-v2-brasilia
+    environment:
+      PORT: 3000
+      REGION: brasilia
+      GATEWAY_VERSION: v2
+      CREDENTIALS_FILE: /run/secrets/processor_credentials.env
+      APPROVAL_CHANCE: 0.94
+      ERROR_CHANCE: 0.008
+    volumes:
+      - ./secrets/runtime/brasilia/v2/processor.env:/run/secrets/processor_credentials.env:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  router-saopaulo:
+    image: nginx:1.27-alpine
+    container_name: router-saopaulo
+    depends_on:
+      gateway-v1-saopaulo:
+        condition: service_healthy
+      gateway-v2-saopaulo:
+        condition: service_healthy
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/regions/saopaulo/active.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8001:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  router-rio:
+    image: nginx:1.27-alpine
+    container_name: router-rio
+    depends_on:
+      gateway-v1-rio:
+        condition: service_healthy
+      gateway-v2-rio:
+        condition: service_healthy
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/regions/rio/active.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8002:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  router-brasilia:
+    image: nginx:1.27-alpine
+    container_name: router-brasilia
+    depends_on:
+      gateway-v1-brasilia:
+        condition: service_healthy
+      gateway-v2-brasilia:
+        condition: service_healthy
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/regions/brasilia/active.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8003:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [migration]
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: migration-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-lifecycle
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+    ports:
+      - "9090:9090"
+    networks: [migration]
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    container_name: migration-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks: [migration]
+
+networks:
+  migration:
+    driver: bridge

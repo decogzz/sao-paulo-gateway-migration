@@ -1,0 +1,13 @@
+{
+  "name": "gateway-v2",
+  "version": "2.0.0",
+  "description": "Modernized payment gateway mock",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "prom-client": "^15.1.3"
+  }
+}

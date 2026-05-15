@@ -1,0 +1,47 @@
+groups:
+  - name: gateway-rollout-alerts
+    rules:
+      - alert: GatewayV2ErrorRateHigh
+        expr: |
+          (
+            sum(rate(gateway_requests_total{version="v2",status="5xx",endpoint="/authorize"}[2m]))
+            /
+            sum(rate(gateway_requests_total{version="v2",endpoint="/authorize"}[2m]))
+          ) > 0.02
+          and
+          sum(rate(gateway_requests_total{version="v2",endpoint="/authorize"}[2m])) > 1
+        for: 2m
+        labels:
+          severity: critical
+          action: halt-rollout
+        annotations:
+          summary: "gateway-v2 error rate is above 2%"
+          description: "v2 error rate has exceeded 2% for 2 minutes. Halt rollout and rollback one phase."
+
+      - alert: GatewayV2P95LatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum(rate(gateway_request_duration_seconds_bucket{version="v2",endpoint="/authorize"}[5m])) by (le, region)) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          action: investigate
+        annotations:
+          summary: "gateway-v2 p95 latency above 800ms"
+          description: "Latency degradation detected for v2. Consider pausing rollout."
+
+      - alert: AuthorizationRateDropV2
+        expr: |
+          (
+            sum(rate(gateway_authorizations_total{version="v2",outcome="approved"}[5m]))
+            /
+            sum(rate(gateway_authorizations_total{version="v2"}[5m]))
+          ) < 0.88
+          and
+          sum(rate(gateway_authorizations_total{version="v2"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: critical
+          action: rollback
+        annotations:
+          summary: "gateway-v2 authorization rate dropped"
+          description: "Authorization rate for v2 has dropped below 88% for 5 minutes."

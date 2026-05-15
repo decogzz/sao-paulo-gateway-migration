@@ -1,0 +1,68 @@
+{
+  "id": null,
+  "uid": "gateway-migration-rollout",
+  "title": "Gateway Migration Rollout",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Request Volume by Version",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (version) (rate(gateway_requests_total{endpoint=\"/authorize\"}[1m]))",
+          "legendFormat": "{{version}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Rate by Version",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (version) (rate(gateway_requests_total{status=\"5xx\",endpoint=\"/authorize\"}[2m])) / sum by (version) (rate(gateway_requests_total{endpoint=\"/authorize\"}[2m]))",
+          "legendFormat": "{{version}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "p95 Latency by Version",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, version) (rate(gateway_request_duration_seconds_bucket{endpoint=\"/authorize\"}[5m])))",
+          "legendFormat": "{{version}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Authorization Rate by Version",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (version) (rate(gateway_authorizations_total{outcome=\"approved\"}[5m])) / sum by (version) (rate(gateway_authorizations_total[5m]))",
+          "legendFormat": "{{version}}"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "region",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(gateway_requests_total, region)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  }
+}

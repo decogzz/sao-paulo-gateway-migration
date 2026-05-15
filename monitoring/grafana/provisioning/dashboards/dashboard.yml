@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'Gateway Migration Dashboards'
+    orgId: 1
+    folder: 'Gateway Migration'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

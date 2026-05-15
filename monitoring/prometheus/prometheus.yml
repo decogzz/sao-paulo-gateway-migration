@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 10s
+
+rule_files:
+  - /etc/prometheus/alert-rules.yml
+
+scrape_configs:
+  - job_name: gateway-services
+    static_configs:
+      - targets:
+          - gateway-v1-saopaulo:3000
+          - gateway-v2-saopaulo:3000
+          - gateway-v1-rio:3000
+          - gateway-v2-rio:3000
+          - gateway-v1-brasilia:3000
+          - gateway-v2-brasilia:3000

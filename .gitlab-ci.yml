@@ -1,0 +1,8 @@
+stages:
+  - validate
+
+validate:compose:
+  stage: validate
+  image: docker:27-cli
+  script:
+    - docker compose -f docker-compose.yml config >/dev/null
